@@ -1,4 +1,3 @@
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -8,18 +7,23 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-class Book{
+import javax.swing.*;
+class Book {
     private int id;
     private String title;
     private String author;
     private int quantity;
     private int available;
-    public Book(int id, String title,String author, int quantity) {
+    private Map<Student, Date> borrowTimes;
+    private Map<Student, Date> returnTimes;
+    public Book(int id, String title, String author, int quantity){
         this.id = id;
         this.title = title;
         this.author = author;
         this.quantity = quantity;
         this.available = quantity;
+        this.borrowTimes = new HashMap<>();
+        this.returnTimes = new HashMap<>();
     }
     public int getId(){
         return id;
@@ -36,17 +40,25 @@ class Book{
     public int getAvailable(){
         return available;
     }
-    public void borrow(){
+    public void borrow(Student student){
         if (available > 0){
             available--;
+            borrowTimes.put(student, new Date());
         }
     }
-    public void returnBook() {
-        if (available < quantity) {
+    public void returnBook(Student student){
+        if (available < quantity){
             available++;
+            returnTimes.put(student, new Date());
         }
     }
-    public String toString() {
+    public Date getBorrowTime(Student student){
+        return borrowTimes.get(student);
+    }
+    public Date getReturnTime(Student student){
+        return returnTimes.get(student);
+    }
+    public String toString(){
         return "Book ID: " + id + ", Title: " + title + ", Author: " + author + ", Available Copies: " + available + " / " + quantity;
     }
 }
@@ -68,28 +80,28 @@ class Student{
     public Date getExitTime(){
         return exitTime;
     }
-    public void setExitTime(Date exitTime) {
+    public void setExitTime(Date exitTime){
         this.exitTime = exitTime;
     }
 }
-class Library {
+class Library{
     private List<Book> books;
     private int nextBookId;
     private List<Student> studentLog;
     private Map<Student, List<Book>> borrowedBooks;
     private SimpleDateFormat dateFormat;
-    public Library() {
+    public Library(){
         books = new ArrayList<>();
         studentLog = new ArrayList<>();
         nextBookId = 1;
         borrowedBooks = new HashMap<>();
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     }
-    public void addBook(String title, String author, int quantity) {
+    public void addBook(String title, String author, int quantity){
         books.add(new Book(nextBookId, title, author, quantity));
         nextBookId++;
     }
-    public List<Book> getBooks() {
+    public List<Book> getBooks(){
         return books;
     }
     public void logStudentEntry(String studentName){
@@ -97,65 +109,85 @@ class Library {
     }
     public void logStudentExit(String studentName){
         for (Student student : studentLog){
-            if (student.getName().equals(studentName) && student.getExitTime() == null) {
+            if (student.getName().equals(studentName) && student.getExitTime() == null){
                 student.setExitTime(new Date());
                 break;
             }
         }
     }
-    public void logBookBorrow(Student student, Book book) {
-        if (borrowedBooks.containsKey(student)) {
+    public void logBookBorrow(Student student, Book book){
+        book.borrow(student);
+        if (borrowedBooks.containsKey(student)){
             borrowedBooks.get(student).add(book);
-        } else {
+        } else{
             List<Book> borrowed = new ArrayList<>();
             borrowed.add(book);
             borrowedBooks.put(student, borrowed);
         }
     }
-    public void logBookReturn(Student student, Book book) {
-        if (borrowedBooks.containsKey(student)) {
+    public void logBookReturn(Student student, Book book){
+        book.returnBook(student);
+        if (borrowedBooks.containsKey(student)){
             borrowedBooks.get(student).remove(book);
         }
     }
-    public List<Student> getStudentLog() {
+    public List<Student> getStudentLog(){
         return studentLog;
     }
-    public Book findBookById(int id) {
+    public Book findBookById(int id){
         for (Book book : books) {
-            if (book.getId() == id) {
+            if (book.getId() == id){
                 return book;
             }
         }
         return null;
     }
-    public List<Book> getBorrowedBooks(Student student) {
+    public List<Book> getBorrowedBooks(Student student){
         return borrowedBooks.get(student);
     }
 }
-public class LibraryManagementGUI {
+public class LibraryManagementGUI{
     private Library library;
     private JFrame frame;
     private DefaultListModel<String> bookListModel;
     private DefaultListModel<String> studentListModel;
-    private JList<String> bookList;
-    private JList<String> studentList;
-    private final String bookImagePath = "C:/Users/Srishti/Desktop/books.jpg";
-    private final String libraryImagePath = "C:/Users/Srishti/Desktop/library.jpg";
+    private JTextArea bookTextArea;
+    private JTextArea studentTextArea;
+    private final String backgroundImagePath = "C:/Users/Srishti/Desktop/library.jpg";
     public LibraryManagementGUI(){
         library = new Library();
         frame = new JFrame("Library Management System");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 300);
-        ImageIcon bookIcon = new ImageIcon(bookImagePath);
-        JLabel bookImageLabel = new JLabel(bookIcon);
-        ImageIcon libraryIcon = new ImageIcon(libraryImagePath);
-        JLabel libraryImageLabel = new JLabel(libraryIcon);
+        frame.setSize(800, 600);
+        ImageIcon backgroundIcon = new ImageIcon(backgroundImagePath);
+        Image backgroundImage = backgroundIcon.getImage().getScaledInstance(1600, 1200, Image.SCALE_SMOOTH); 
+        backgroundIcon = new ImageIcon(backgroundImage);
+        JLabel backgroundLabel = new JLabel(backgroundIcon);
+        frame.setContentPane(new JPanel(){
+            @Override
+            public void paintComponent(Graphics g){
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), null);
+            }
+        });
         bookListModel = new DefaultListModel<>();
-        bookList = new JList<>(bookListModel);
-        JScrollPane scrollPane = new JScrollPane(bookList);
         studentListModel = new DefaultListModel<>();
-        studentList = new JList<>(studentListModel);
-        JScrollPane studentScrollPane = new JScrollPane(studentList);
+        bookTextArea = new JTextArea();
+        bookTextArea.setEditable(false);
+        bookTextArea.setOpaque(false);
+        bookTextArea.setForeground(Color.WHITE);
+        bookTextArea.setFont(new Font("Serif", Font.BOLD, 14));
+        JScrollPane bookScrollPane = new JScrollPane(bookTextArea);
+        bookScrollPane.setOpaque(false);
+        bookScrollPane.getViewport().setOpaque(false);
+        studentTextArea = new JTextArea();
+        studentTextArea.setEditable(false);
+        studentTextArea.setOpaque(false);
+        studentTextArea.setForeground(Color.WHITE);
+        studentTextArea.setFont(new Font("Serif", Font.BOLD, 14));
+        JScrollPane studentScrollPane = new JScrollPane(studentTextArea);
+        studentScrollPane.setOpaque(false);
+        studentScrollPane.getViewport().setOpaque(false);
         JButton listBooksButton = new JButton("List Books");
         JButton addBookButton = new JButton("Add Book");
         JButton borrowBookButton = new JButton("Borrow Book");
@@ -168,7 +200,7 @@ public class LibraryManagementGUI {
             }
         });
         addBookButton.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(ActionEvent e){
                 addBook();
             }
         });
@@ -187,144 +219,116 @@ public class LibraryManagementGUI {
                 studentEntry();
             }
         });
-
         studentExitButton.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
                 studentExit();
             }
         });
         JPanel buttonPanel = new JPanel();
+        buttonPanel.setOpaque(false);
         buttonPanel.add(listBooksButton);
         buttonPanel.add(addBookButton);
         buttonPanel.add(borrowBookButton);
         buttonPanel.add(returnBookButton);
         buttonPanel.add(studentEntryButton);
         buttonPanel.add(studentExitButton);
-        JPanel imagePanel = new JPanel();
-        imagePanel.add(bookImageLabel);
-        imagePanel.add(libraryImageLabel);
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(1, 2));
-        panel.add(scrollPane);
+        JPanel panel = new JPanel(new GridLayout(1, 2));
+        panel.setOpaque(false);
+        panel.add(bookScrollPane);
         panel.add(studentScrollPane);
         frame.setLayout(new BorderLayout());
-        frame.add(imagePanel, BorderLayout.NORTH); 
         frame.add(panel, BorderLayout.CENTER);
         frame.add(buttonPanel, BorderLayout.SOUTH);
         frame.setVisible(true);
     }
     private void listBooks(){
-        bookListModel.clear();
-        for (Book book : library.getBooks()){
-            bookListModel.addElement(book.toString());
+        bookTextArea.setText("");
+        for (Book book : library.getBooks()) {
+            bookTextArea.append(book.toString() + "\n");
         }
         listStudents();
     }
     private void listStudents(){
-        studentListModel.clear();
+        studentTextArea.setText("");
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        for (Student student : library.getStudentLog()) {
+        for (Student student : library.getStudentLog()){
             String exitTime = student.getExitTime() != null ? dateFormat.format(student.getExitTime()) : "N/A";
             StringBuilder studentInfo = new StringBuilder("Student Name: " + student.getName() +
-                ", Entry Time: " + dateFormat.format(student.getEntryTime()) +
-                ", Exit Time: " + exitTime + "\n");
+                    ", Entry Time: " + dateFormat.format(student.getEntryTime()) +
+                    ", Exit Time: " + exitTime + "\n");
             List<Book> borrowedBooks = library.getBorrowedBooks(student);
             if (borrowedBooks != null && !borrowedBooks.isEmpty()){
                 studentInfo.append("Borrowed Books:\n");
-                for (Book book : borrowedBooks) {
-                    studentInfo.append("  - ").append(book.getTitle()).append("\n");
+                for (Book book : borrowedBooks){
+                    String borrowTime = dateFormat.format(book.getBorrowTime(student));
+                    String returnTime = book.getReturnTime(student) != null ? dateFormat.format(book.getReturnTime(student)) : "Not returned";
+                    studentInfo.append(" - Book ID: ").append(book.getId())
+                            .append(", Title: ").append(book.getTitle())
+                            .append(", Borrow Time: ").append(borrowTime)
+                            .append(", Return Time: ").append(returnTime).append("\n");
                 }
             }
-            studentListModel.addElement(studentInfo.toString());
+            studentTextArea.append(studentInfo.toString() + "\n");
         }
     }
-    private void addBook() {
+    private void addBook(){
         String title = JOptionPane.showInputDialog("Enter the title of the book:");
         String author = JOptionPane.showInputDialog("Enter the author of the book:");
-        String quantityInput = JOptionPane.showInputDialog("Enter the quantity of copies:");
-        if (title != null && author != null && quantityInput != null){
-            try {
-                int quantity = Integer.parseInt(quantityInput);
-                library.addBook(title, author, quantity);
-                listBooks();
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(null, "Invalid input for quantity. Please enter a valid number.");
-            }
-        }
+        int quantity = Integer.parseInt(JOptionPane.showInputDialog("Enter the quantity of the book:"));
+        library.addBook(title, author, quantity);
+        listBooks();
     }
     private void borrowBook(){
-        String studentName = JOptionPane.showInputDialog("Enter student's name:");
-        String bookIdInput = JOptionPane.showInputDialog("Enter the book ID to borrow:");
-        if (studentName != null && bookIdInput != null){
-            try {
-                int borrowId = Integer.parseInt(bookIdInput);
-                Book borrowBook = library.findBookById(borrowId);
-                if (borrowBook != null && borrowBook.getAvailable() > 0){
-                    Student student = library.getStudentLog().stream()
-                            .filter(s -> s.getName().equals(studentName))
-                            .findFirst()
-                            .orElse(null);
-                    if (student != null) {
-                        borrowBook.borrow();
-                        library.logBookBorrow(student, borrowBook);
-                        listBooks();
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Student not found.");
-                    }
-                } else {
-                    JOptionPane.showMessageDialog(null, "All copies of the book are currently borrowed.");
-                }
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(null, "Invalid input. Please enter a valid book ID.");
+        String studentName = JOptionPane.showInputDialog("Enter the name of the student:");
+        int bookId = Integer.parseInt(JOptionPane.showInputDialog("Enter the book ID to borrow:"));
+        Book book = library.findBookById(bookId);
+        if (book != null && book.getAvailable() > 0){
+            Student student = findStudentByName(studentName);
+            if (student != null){
+                library.logBookBorrow(student, book);
+                listBooks();
+            } else{
+                JOptionPane.showMessageDialog(frame, "Student not found.");
+            }
+        } else{
+            JOptionPane.showMessageDialog(frame, "Book not found or no copies available.");
+        }
+    }
+    private void returnBook(){
+        String studentName = JOptionPane.showInputDialog("Enter the name of the student:");
+        int bookId = Integer.parseInt(JOptionPane.showInputDialog("Enter the book ID to return:"));
+        Book book = library.findBookById(bookId);
+        if (book != null){
+            Student student = findStudentByName(studentName);
+            if (student != null){
+                library.logBookReturn(student, book);
+                listBooks();
+            } else{
+                JOptionPane.showMessageDialog(frame, "Student not found.");
+            }
+        } else{
+            JOptionPane.showMessageDialog(frame, "Book not found.");
+        }
+    }
+    private void studentEntry(){
+        String studentName = JOptionPane.showInputDialog("Enter the name of the student:");
+        library.logStudentEntry(studentName);
+        listStudents();
+    }
+    private void studentExit(){
+        String studentName = JOptionPane.showInputDialog("Enter the name of the student:");
+        library.logStudentExit(studentName);
+        listStudents();
+    }
+    private Student findStudentByName(String name){
+        for (Student student : library.getStudentLog()){
+            if (student.getName().equals(name) && student.getExitTime() == null){
+                return student;
             }
         }
+        return null;
     }
-    private void returnBook() {
-        String studentName = JOptionPane.showInputDialog("Enter student's name:");
-        String bookIdInput = JOptionPane.showInputDialog("Enter the book ID to return:");
-        if (studentName != null && bookIdInput != null) {
-            try {
-                int returnId = Integer.parseInt(bookIdInput);
-                Book returnBook = library.findBookById(returnId);
-                if (returnBook != null && returnBook.getAvailable() < returnBook.getQuantity()) {
-                    Student student = library.getStudentLog().stream()
-                            .filter(s -> s.getName().equals(studentName))
-                            .findFirst()
-                            .orElse(null);
-                    if (student != null) {
-                        returnBook.returnBook();
-                        library.logBookReturn(student, returnBook);
-                        listBooks();
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Student not found.");
-                    }
-                } else {
-                    JOptionPane.showMessageDialog(null, "No copies of the book are currently borrowed.");
-                }
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(null, "Invalid input. Please enter a valid book ID.");
-            }
-        }
-    }
-    private void studentEntry() {
-        String studentName = JOptionPane.showInputDialog("Enter student's name for entry:");
-        if (studentName != null && !studentName.isEmpty()) {
-            library.logStudentEntry(studentName);
-            listStudents();
-        }
-    }
-    private void studentExit() {
-        String studentName = JOptionPane.showInputDialog("Enter student's name for exit:");
-        if (studentName != null && !studentName.isEmpty()) {
-            library.logStudentExit(studentName);
-            listStudents();
-        }
-    }
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new LibraryManagementGUI();
-            }
-        });
+    public static void main(String[] args){
+        new LibraryManagementGUI();
     }
 }
